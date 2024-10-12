@@ -1,38 +1,28 @@
 const vscode = require('vscode');
 
-let idleTime = 0; // Time in seconds before considering the user idle
-let idleInterval; // Interval for checking idle time
-let providerDisposable; // To store the completion provider
+let lastTime;
 
 function activate(context) {
-    // Reset idle timer when user interacts
-    const resetIdleTimer = () => {
-        idleTime = 0; // Reset idle time
-    };
-
-    // Start an interval to check idle time
-    idleInterval = setInterval(() => {
-        idleTime++;
-        if (idleTime >= 3) { // Change this value to set the idle threshold
-            vscode.commands.executeCommand('editor.action.triggerSuggest');
-        }
-    }, 1000);
-
-	context.subscriptions.push(
-        vscode.workspace.onDidChangeTextDocument(resetIdleTimer),
-        vscode.window.onDidChangeActiveTextEditor(resetIdleTimer),
-        vscode.window.onDidChangeTextEditorSelection(resetIdleTimer),
-        vscode.window.onDidChangeActiveColorTheme(resetIdleTimer)
-    );
+	lastTime = new Date();
 
     // Register the inline completion provider
     const provider = {
         provideInlineCompletionItems(document, position, context, token) {
-            // Define the suggestion text based on custom logic
-            const suggestionText = "suggestedCode();"; // Replace with the suggestion you want
+			// Calculate elapsed time
+			const now = new Date();
+			const elapsed = now - lastTime;
+			lastTime = now;
 
-			const completionItem = new vscode.InlineCompletionItem(suggestionText, new vscode.Range(position, position));
-			return [completionItem];			
+            const linePrefix = document.lineAt(position).text.substring(0, position.character);
+            const suggestionText = "suggestedCode();";
+			
+			// Check if more than 3 seconds has elapsed
+            if (elapsed > 3) {
+                const completionItem = new vscode.InlineCompletionItem(suggestionText, new vscode.Range(position, position));
+                return [completionItem];
+            }
+			
+            return [];
         }
     };
 
@@ -46,9 +36,7 @@ function activate(context) {
     context.subscriptions.push(providerDisposable);
 }
 
-function deactivate() {
-	clearInterval(idleInterval);
-}
+function deactivate() {}
 
 module.exports = {
     activate,
