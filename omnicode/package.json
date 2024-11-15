@@ -24,6 +24,14 @@
       {
         "command": "omnicode.registerUser",
         "title": "Omnicode - Register"
+      },
+      {
+        "command": "omnicode.loginUser",
+        "title": "Omnicode - Login"
+      },
+      {
+        "command": "omnicode.logoutUser",
+        "title": "Omnicode - Logout"
       }
     ],
     "menus": {
@@ -41,6 +49,16 @@
         {
           "command": "omnicode.registerUser",
           "group": "omnicode@2",
+          "when": "true"
+        },
+        {
+          "command": "omnicode.loginUser",
+          "group": "omnicode@3",
+          "when": "true"
+        },
+        {
+          "command": "omnicode.logoutUser",
+          "group": "omnicode@4",
           "when": "true"
         }
       ]
@@ -66,6 +84,7 @@
     "typescript": "^5.6.2"
   },
   "dependencies": {
+    "@aws-sdk/client-cognito-identity-provider": "^3.693.0",
     "dotenv": "^16.4.5"
   }
 }

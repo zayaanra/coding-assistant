@@ -1,11 +1,24 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
-import * as vscode from 'vscode';
 import * as dotenv from 'dotenv';
 
-dotenv.config();
+// You need to change this path to the .env file you have locally (still trying to figure out an alternative, VSCode tries to look for .env in VSCODE/ directory, not project root)
+dotenv.config( {path: 'C:/Users/rahma/Desktop/Projects/omnicode/.env'});
 
-const USER_POOL_ID = process.env.USER_POOL_ID;
+import * as vscode from 'vscode';
+import { CognitoIdentityProviderClient, ConfirmSignUpCommand, SignUpCommand, InitiateAuthCommand, GetUserCommand } from '@aws-sdk/client-cognito-identity-provider';
+
+const AWS_ACCESS_KEY = process.env.AWS_ACCESS_KEY!;
+const AWS_SECRET_KEY = process.env.AWS_SECRET_KEY!;
+const AWS_COGNITO_APP_CLIENT_ID = process.env.AWS_COGNITO_APP_CLIENT_ID!;
+
+const cognitoClient = new CognitoIdentityProviderClient({
+	'region': "us-east-2",
+	'credentials': {
+		accessKeyId: AWS_ACCESS_KEY,
+		secretAccessKey: AWS_SECRET_KEY
+	},
+});
 
 function validatePassword(password: string): string | null {
 	// Password requirements adhere to Cognito's default password rules
@@ -28,30 +41,56 @@ function validatePassword(password: string): string | null {
 }
 
 async function registerUser(email: string, password: string) {
-	const AWS = require('aws-sdk')
-	const cognito = new AWS.CognitoIdentityServiceProvider();
+    const command = new SignUpCommand({
+        ClientId: AWS_COGNITO_APP_CLIENT_ID,
+        Username: email,
+        Password: password,
+        UserAttributes: [
+            { Name: "email", Value: email },
+        ],
+    });
 
-	const params = {
-		UserPoolId: USER_POOL_ID,
-		Username: email,
-		TemporaryPassword: password,
-		UserAttributes: [
-			{
-				Name: 'email',
-				Value: email
-			}
-		],
-		MessageAction: 'SUPPRESS',
-	};
+    try {
+        const response = await cognitoClient.send(command);
+        vscode.window.showInformationMessage("Signup successful!");
+		return true;
+    } catch (error: any) {
+        vscode.window.showErrorMessage(
+            `Error during registration: ${error.message || "Unknown error"}`
+        );
+		return false;
+    }
+}
+
+async function loginUser(email: string, password: string) {
+	const command = new InitiateAuthCommand({
+		AuthFlow: "USER_PASSWORD_AUTH",
+		ClientId: AWS_COGNITO_APP_CLIENT_ID,
+		AuthParameters: {
+			USERNAME: email,
+			PASSWORD: password,
+		},
+	});
 
 	try {
-		await cognito.adminCreateUser(params).promise()
-		console.log("User successfully registered");
+		const response = await cognitoClient.send(command);
+		if (response.AuthenticationResult) {
+			const { IdToken, AccessToken, RefreshToken } = response.AuthenticationResult;
+			console.log(IdToken);
+
+			vscode.window.showInformationMessage("Login successful");
+			
+			return { IdToken, AccessToken, RefreshToken };
+		} else {
+			vscode.window.showErrorMessage("Login failed");
+		}
 	} catch (error) {
-		console.error("Error registering user:", error)
-		vscode.window.showErrorMessage("Error registering user");
+		vscode.window.showErrorMessage("Login failed");
 	}
+	return null;
 }
+
+// async function addUserToTable(email: string)
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -90,14 +129,74 @@ export function activate(context: vscode.ExtensionContext) {
 	
 		if (!password) return;
 	
-		// TODO: Need to set up AWS credentials (either call Cognito API in Lambda function or use environment variables locally)
+		const result = await registerUser(email, password);
+		if (result) {
+			const verificationCode = await vscode.window.showInputBox({
+				prompt: "Enter the verification code",
+				placeHolder: "Verification Code"
+			});
+			if (!verificationCode) return;
 
-		// await registerUser(email, password);
-		vscode.window.showInformationMessage("Registration successful!");
+			const command = new ConfirmSignUpCommand({
+				ClientId: AWS_COGNITO_APP_CLIENT_ID,
+				Username: email,
+				ConfirmationCode: verificationCode
+			});
+
+			try {
+				await cognitoClient.send(command);
+				vscode.window.showInformationMessage("Your account has been verified successfully");
+			} catch (error) {
+				vscode.window.showErrorMessage("Failed to verify your account");
+			}		
+		}
+
+		// TODO: How to get user id to store in dynamodb
 
 	});
 	context.subscriptions.push(disposableRegister);
 
+	const disposableLogin = vscode.commands.registerCommand("omnicode.loginUser", async () => {
+		const email = await vscode.window.showInputBox({
+			prompt: "Enter your email address",
+			placeHolder: "user@example.com",
+			validateInput: (value: string) => {
+				const emailRegex = /^[\w-]+(\.[\w-]+)*@([\w-]+\.)+[a-zA-Z]{2,7}$/;
+				if (!emailRegex.test(value)) {
+					return "Please enter a valid email address.";
+				}
+				return null;
+			}
+		});
+		if (!email) return;
+
+		const password = await vscode.window.showInputBox({
+			prompt: "Enter your password",
+			placeHolder: "Password",
+			password: true,
+			validateInput: (value: string) => {
+				const passwordValidation = validatePassword(value);
+				if (passwordValidation) {
+					return passwordValidation;
+				}
+				return null;
+			}
+		});
+
+		if (!password) return;
+
+		const tokens = await loginUser(email, password);
+		if (tokens) {
+			context.globalState.update("authTokens", tokens);
+		}
+	});
+	context.subscriptions.push(disposableLogin);
+
+	const disposableLogout = vscode.commands.registerCommand("omnicode.logoutUser", async () => {
+		context.globalState.update("authTokens", null);
+		vscode.window.showInformationMessage("You have been logged out");
+	});
+	context.subscriptions.push(disposableLogout);
 
 	// TODO: We also need a command for code completions
 
