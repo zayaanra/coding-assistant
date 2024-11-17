@@ -1,9 +1,13 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
+import * as path from 'path';
 import * as dotenv from 'dotenv';
 
+import { DynamoDBClient, PutItemCommand } from "@aws-sdk/client-dynamodb";
+
 // You need to change this path to the .env file you have locally (still trying to figure out an alternative, VSCode tries to look for .env in VSCODE/ directory, not project root)
-dotenv.config( {path: 'C:/Users/rahma/Desktop/Projects/omnicode/.env'});
+const envPath = path.join(__dirname, '../../', '.env'); // Adjust path based on where .env is located
+dotenv.config({ path: envPath });
 
 import * as vscode from 'vscode';
 import { CognitoIdentityProviderClient, ConfirmSignUpCommand, SignUpCommand, InitiateAuthCommand, GetUserCommand } from '@aws-sdk/client-cognito-identity-provider';
@@ -19,6 +23,30 @@ const cognitoClient = new CognitoIdentityProviderClient({
 		secretAccessKey: AWS_SECRET_KEY
 	},
 });
+
+async function insertUser(userSub: string) {
+	const dynamoDBClient = new DynamoDBClient({ 
+		'region': 'us-east-2',
+		'credentials': {
+			accessKeyId: AWS_ACCESS_KEY,
+			secretAccessKey: AWS_SECRET_KEY
+		},
+	});
+
+	const params = {
+		TableName: "UserMetadata",
+		Item: {
+			CognitoUserId: { S: userSub },
+		},
+	};
+
+	try {
+		await dynamoDBClient.send(new PutItemCommand(params));
+		console.log("User added to DynamoDB successfully");
+	} catch (error) {
+		console.error("Error adding user to DynamoDB");
+	}
+}
 
 function validatePassword(password: string): string | null {
 	// Password requirements adhere to Cognito's default password rules
@@ -52,6 +80,7 @@ async function registerUser(email: string, password: string) {
 
     try {
         const response = await cognitoClient.send(command);
+		await insertUser(response.UserSub!);
         vscode.window.showInformationMessage("Signup successful!");
 		return true;
     } catch (error: any) {

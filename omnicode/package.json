@@ -85,6 +85,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-cognito-identity-provider": "^3.693.0",
+    "@aws-sdk/client-dynamodb": "^3.693.0",
     "dotenv": "^16.4.5"
   }
 }
