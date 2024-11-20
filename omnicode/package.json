@@ -14,6 +14,10 @@
   "contributes": {
     "commands": [
       {
+        "command": "omnicode.codeCompletion",
+        "title": "Omnicode - Code Completion"
+      },
+      {
         "command": "omnicode.refactorCode",
         "title": "Omnicode - Refactor Code"
       },
@@ -37,28 +41,33 @@
     "menus": {
       "editor/context": [
         {
-          "command": "omnicode.refactorCode",
+          "command": "omnicode.codeCompletion",
           "group": "omnicode",
-          "when": "editorHasSelection"
+          "when": "true"
         },
         {
-          "command": "omnicode.generateDocumentation",
+          "command": "omnicode.refactorCode",
           "group": "omnicode@1",
           "when": "editorHasSelection"
         },
         {
-          "command": "omnicode.registerUser",
+          "command": "omnicode.generateDocumentation",
           "group": "omnicode@2",
-          "when": "true"
+          "when": "editorHasSelection"
         },
         {
-          "command": "omnicode.loginUser",
+          "command": "omnicode.registerUser",
           "group": "omnicode@3",
           "when": "true"
         },
         {
-          "command": "omnicode.logoutUser",
+          "command": "omnicode.loginUser",
           "group": "omnicode@4",
+          "when": "true"
+        },
+        {
+          "command": "omnicode.logoutUser",
+          "group": "omnicode@5",
           "when": "true"
         }
       ]

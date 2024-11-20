@@ -179,9 +179,6 @@ export function activate(context: vscode.ExtensionContext) {
 				vscode.window.showErrorMessage("Failed to verify your account");
 			}		
 		}
-
-		// TODO: How to get user id to store in dynamodb
-
 	});
 	context.subscriptions.push(disposableRegister);
 
@@ -227,7 +224,27 @@ export function activate(context: vscode.ExtensionContext) {
 	});
 	context.subscriptions.push(disposableLogout);
 
-	// TODO: We also need a command for code completions
+	// TODO:
+    const inlineCompletionProvider: vscode.InlineCompletionItemProvider = {
+        provideInlineCompletionItems(document, position, context, token) {
+            const text = "This is a ghost suggestion";
+            
+            // Inline Completion Item
+            const range = new vscode.Range(position, position);
+            const completion = new vscode.InlineCompletionItem(text, range);
+
+            return new vscode.InlineCompletionList([completion]);
+        },
+    };
+    // Register Inline Completion Provider
+    const disposableCodeCompletion = vscode.languages.registerInlineCompletionItemProvider(
+        { pattern: "**" }, // Matches all files
+        inlineCompletionProvider
+    );
+    context.subscriptions.push(disposableCodeCompletion);
+	
+
+
 
 	// Refactor Code Command
 	const disposableRefactorCode = vscode.commands.registerCommand("omnicode.refactorCode", async () => {
