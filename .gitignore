@@ -1,1 +1,4 @@
 omnicode/node_modules
+.DS_Store
+omnicode/.DS_Store
+omnicode/*/.DS_Store
