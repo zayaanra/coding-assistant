@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Omnicode Usage Dashboard</title>
+    <link rel="stylesheet" href="index.css">
+</head>
+<body>
+    <h1>Your Omnicode Usage</h1>
+
+    <div class="dashboard">
+        <div class="card">
+            <small>Number of Completions</small>
+            <h2>257</h2>
+        </div>
+        <div class="card">
+            <small>How much data has been written by Omnicode?</small>
+            <h2>5KB</h2>
+        </div>
+    </div>
+
+    <div class="charts-container">
+        <div class="languages-card card">
+            <small>What languages have you used Omnicode on?</small>
+            <canvas id="languagesChart"></canvas>
+        </div>
+
+        <div class="chart-card card">
+            <small>Omnicode Requests by Type</small>
+            <canvas id="requestsChart"></canvas>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="index.js"></script>
+</body>
+</html>
