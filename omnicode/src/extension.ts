@@ -123,7 +123,9 @@ async function loginUser(email: string, password: string) {
 	return null;
 }
 
-// async function addUserToTable(email: string)
+function getFileLanguage() {
+	return vscode.window.activeTextEditor?.document.languageId;
+} 
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -234,32 +236,22 @@ export function activate(context: vscode.ExtensionContext) {
         { scheme: 'file', language: '*' },
         {
             provideInlineCompletionItems(document: vscode.TextDocument, position: vscode.Position) {
-                console.log('Typing detected, starting completion process...');
 
                 return new Promise<vscode.InlineCompletionItem[] | undefined>((resolve) => {
                     if (timeout) {
-                        console.log('Clearing previous timeout...');
                         clearTimeout(timeout);
                     }
 
                     timeout = setTimeout(() => {
-                        console.log('Timer completed, providing suggestion...');
-
                         const line = document.lineAt(position);
-                        const words = line.text.split(/\s+/);
 
-                        if (words.length < 2) {
-                            console.log('Not enough words, no suggestions.');
+                        if (line.text.length == 0) {
                             resolve(undefined);
                             return;
                         }
 
-                        const lastWord = words[words.length - 2];
-                        console.log("Last word detected: ${lastWord}");
-
-                        const completionItem = new vscode.InlineCompletionItem(lastWord, new vscode.Range(position, position));
+                        const completionItem = new vscode.InlineCompletionItem(line.text, new vscode.Range(position, position));
                         
-                        console.log('Returning inline completion item...');
                         resolve([completionItem]);
                     }, 3000);
                 });
