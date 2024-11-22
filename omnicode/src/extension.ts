@@ -24,6 +24,9 @@ const cognitoClient = new CognitoIdentityProviderClient({
 	},
 });
 
+let timeout: NodeJS.Timeout | undefined = undefined;  // To keep track of the timeout
+
+
 async function insertUser(userSub: string) {
 	const dynamoDBClient = new DynamoDBClient({ 
 		'region': 'us-east-2',
@@ -44,6 +47,7 @@ async function insertUser(userSub: string) {
 		await dynamoDBClient.send(new PutItemCommand(params));
 		console.log("User added to DynamoDB successfully");
 	} catch (error) {
+		console.log(error);
 		console.error("Error adding user to DynamoDB");
 	}
 }
@@ -224,25 +228,46 @@ export function activate(context: vscode.ExtensionContext) {
 	});
 	context.subscriptions.push(disposableLogout);
 
-	// TODO:
-    const inlineCompletionProvider: vscode.InlineCompletionItemProvider = {
-        provideInlineCompletionItems(document, position, context, token) {
-            const text = "This is a ghost suggestion";
-            
-            // Inline Completion Item
-            const range = new vscode.Range(position, position);
-            const completion = new vscode.InlineCompletionItem(text, range);
-
-            return new vscode.InlineCompletionList([completion]);
-        },
-    };
-    // Register Inline Completion Provider
-    const disposableCodeCompletion = vscode.languages.registerInlineCompletionItemProvider(
-        { pattern: "**" }, // Matches all files
-        inlineCompletionProvider
-    );
-    context.subscriptions.push(disposableCodeCompletion);
 	
+	// TODO: This is where code suggestions happen
+	const provider = vscode.languages.registerInlineCompletionItemProvider(
+        { scheme: 'file', language: '*' },
+        {
+            provideInlineCompletionItems(document: vscode.TextDocument, position: vscode.Position) {
+                console.log('Typing detected, starting completion process...');
+
+                return new Promise<vscode.InlineCompletionItem[] | undefined>((resolve) => {
+                    if (timeout) {
+                        console.log('Clearing previous timeout...');
+                        clearTimeout(timeout);
+                    }
+
+                    timeout = setTimeout(() => {
+                        console.log('Timer completed, providing suggestion...');
+
+                        const line = document.lineAt(position);
+                        const words = line.text.split(/\s+/);
+
+                        if (words.length < 2) {
+                            console.log('Not enough words, no suggestions.');
+                            resolve(undefined);
+                            return;
+                        }
+
+                        const lastWord = words[words.length - 2];
+                        console.log("Last word detected: ${lastWord}");
+
+                        const completionItem = new vscode.InlineCompletionItem(lastWord, new vscode.Range(position, position));
+                        
+                        console.log('Returning inline completion item...');
+                        resolve([completionItem]);
+                    }, 3000);
+                });
+            }
+        }
+    );
+
+    context.subscriptions.push(provider);
 
 
 
