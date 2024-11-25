@@ -24,9 +24,6 @@ const cognitoClient = new CognitoIdentityProviderClient({
 	},
 });
 
-let timeout: NodeJS.Timeout | undefined = undefined;  // To keep track of the timeout
-
-
 async function insertUser(userSub: string) {
 	const dynamoDBClient = new DynamoDBClient({ 
 		'region': 'us-east-2',
@@ -47,7 +44,6 @@ async function insertUser(userSub: string) {
 		await dynamoDBClient.send(new PutItemCommand(params));
 		console.log("User added to DynamoDB successfully");
 	} catch (error) {
-		console.log(error);
 		console.error("Error adding user to DynamoDB");
 	}
 }
@@ -123,9 +119,7 @@ async function loginUser(email: string, password: string) {
 	return null;
 }
 
-function getFileLanguage() {
-	return vscode.window.activeTextEditor?.document.languageId;
-} 
+// async function addUserToTable(email: string)
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -230,36 +224,25 @@ export function activate(context: vscode.ExtensionContext) {
 	});
 	context.subscriptions.push(disposableLogout);
 
-	
-	// TODO: This is where code suggestions happen
-	const provider = vscode.languages.registerInlineCompletionItemProvider(
-        { scheme: 'file', language: '*' },
-        {
-            provideInlineCompletionItems(document: vscode.TextDocument, position: vscode.Position) {
+	// TODO:
+    const inlineCompletionProvider: vscode.InlineCompletionItemProvider = {
+        provideInlineCompletionItems(document, position, context, token) {
+            const text = "This is a ghost suggestion";
+            
+            // Inline Completion Item
+            const range = new vscode.Range(position, position);
+            const completion = new vscode.InlineCompletionItem(text, range);
 
-                return new Promise<vscode.InlineCompletionItem[] | undefined>((resolve) => {
-                    if (timeout) {
-                        clearTimeout(timeout);
-                    }
-
-                    timeout = setTimeout(() => {
-                        const line = document.lineAt(position);
-
-                        if (line.text.length == 0) {
-                            resolve(undefined);
-                            return;
-                        }
-
-                        const completionItem = new vscode.InlineCompletionItem(line.text, new vscode.Range(position, position));
-                        
-                        resolve([completionItem]);
-                    }, 3000);
-                });
-            }
-        }
+            return new vscode.InlineCompletionList([completion]);
+        },
+    };
+    // Register Inline Completion Provider
+    const disposableCodeCompletion = vscode.languages.registerInlineCompletionItemProvider(
+        { pattern: "**" }, // Matches all files
+        inlineCompletionProvider
     );
-
-    context.subscriptions.push(provider);
+    context.subscriptions.push(disposableCodeCompletion);
+	
 
 
 
