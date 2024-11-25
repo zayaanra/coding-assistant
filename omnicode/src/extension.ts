@@ -3,6 +3,8 @@
 import * as path from 'path';
 import * as dotenv from 'dotenv';
 
+import Requests from './api';
+
 import { DynamoDBClient, PutItemCommand } from "@aws-sdk/client-dynamodb";
 
 // You need to change this path to the .env file you have locally (still trying to figure out an alternative, VSCode tries to look for .env in VSCODE/ directory, not project root)
@@ -23,6 +25,8 @@ const cognitoClient = new CognitoIdentityProviderClient({
 		secretAccessKey: AWS_SECRET_KEY
 	},
 });
+
+let timeout: NodeJS.Timeout | undefined = undefined;  // To keep track of the timeout
 
 async function insertUser(userSub: string) {
 	const dynamoDBClient = new DynamoDBClient({ 
@@ -118,8 +122,6 @@ async function loginUser(email: string, password: string) {
 	}
 	return null;
 }
-
-// async function addUserToTable(email: string)
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -224,32 +226,49 @@ export function activate(context: vscode.ExtensionContext) {
 	});
 	context.subscriptions.push(disposableLogout);
 
-	// TODO:
-    const inlineCompletionProvider: vscode.InlineCompletionItemProvider = {
-        provideInlineCompletionItems(document, position, context, token) {
-            const text = "This is a ghost suggestion";
-            
-            // Inline Completion Item
-            const range = new vscode.Range(position, position);
-            const completion = new vscode.InlineCompletionItem(text, range);
+	const provider = vscode.languages.registerInlineCompletionItemProvider(
+        { scheme: 'file', language: '*' },
+        {
+            provideInlineCompletionItems(document: vscode.TextDocument, position: vscode.Position) {
+                console.log('Typing detected, starting completion process...');
 
-            return new vscode.InlineCompletionList([completion]);
-        },
-    };
-    // Register Inline Completion Provider
-    const disposableCodeCompletion = vscode.languages.registerInlineCompletionItemProvider(
-        { pattern: "**" }, // Matches all files
-        inlineCompletionProvider
+                return new Promise<vscode.InlineCompletionItem[] | undefined>((resolve) => {
+                    if (timeout) {
+                        console.log('Clearing previous timeout...');
+                        clearTimeout(timeout);
+                    }
+
+                    timeout = setTimeout(() => {
+                        console.log('Timer completed, providing suggestion...');
+
+                        const line = document.lineAt(position);
+                        const words = line.text.split(/\s+/);
+
+						Requests.codeCompletionRequest(line.text);
+
+                        if (words.length < 2) {
+                            resolve(undefined);
+                            return;
+                        }
+
+                        const lastWord = words[words.length - 2];
+
+                        const completionItem = new vscode.InlineCompletionItem(lastWord, new vscode.Range(position, position));
+                        
+                        resolve([completionItem]);
+                    }, 3000);
+                });
+            }
+        }
     );
-    context.subscriptions.push(disposableCodeCompletion);
+
+    context.subscriptions.push(provider);
 	
 
 
 
 	// Refactor Code Command
 	const disposableRefactorCode = vscode.commands.registerCommand("omnicode.refactorCode", async () => {
-		// TODO: This is where we'll call the Lambda function for refactoring code.
-
 		const editor = vscode.window.activeTextEditor;
 
 		if (editor) {
@@ -262,6 +281,8 @@ export function activate(context: vscode.ExtensionContext) {
 				editBuilder.replace(editor.selection, refactoredText);
 			});
 
+			Requests.refactorRequest(selectedText);
+
 			vscode.window.showInformationMessage(`Refactored to: ${refactoredText}`);
 		} else {
 			vscode.window.showErrorMessage("No active editor found.");
@@ -271,13 +292,15 @@ export function activate(context: vscode.ExtensionContext) {
 
 	// Generate Documentation Command
 	const disposableDocGen = vscode.commands.registerCommand("omnicode.generateDocumentation", async () => {
-		// TODO: This is where we'll call the Lambda function for generating documentation
-
 		const editor = vscode.window.activeTextEditor;
 
 		if (editor) {
+			
+			
 			const selectedText = editor.document.getText(editor.selection);
 			console.log(`Selected texts for DocGen is ${selectedText}`);
+
+			Requests.generateDocstringRequest(selectedText);
 		}
 	});
 	context.subscriptions.push(disposableDocGen);
