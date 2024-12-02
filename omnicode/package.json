@@ -32,6 +32,10 @@
       {
         "command": "omnicode.logoutUser",
         "title": "Omnicode - Logout"
+      },
+      {
+        "command": "omnicode.viewDashboard",
+        "title": "Omnicode - View Your Dashboard"
       }
     ],
     "menus": {
@@ -60,6 +64,11 @@
           "command": "omnicode.logoutUser",
           "group": "omnicode@4",
           "when": "true"
+        },
+        {
+          "command": "omnicode.viewDashboard",
+          "group": "omnicode@5",
+          "when": "true"
         }
       ]
     }
@@ -87,8 +96,11 @@
   "dependencies": {
     "@aws-sdk/client-cognito-identity-provider": "^3.693.0",
     "@aws-sdk/client-dynamodb": "^3.699.0",
+    "@aws-sdk/client-s3": "^3.703.0",
+    "@aws-sdk/s3-request-presigner": "^3.703.0",
     "axios": "^1.7.7",
     "axois": "^0.0.1-security",
-    "dotenv": "^16.4.5"
+    "dotenv": "^16.4.5",
+    "jwt-decode": "^4.0.0"
   }
 }

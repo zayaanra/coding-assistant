@@ -3,12 +3,16 @@
 import * as path from 'path';
 import * as dotenv from 'dotenv';
 
+
 import Requests from './api';
+import { getCognitoUserId } from './dashboard';
 
 import { DynamoDBClient, PutItemCommand } from "@aws-sdk/client-dynamodb";
+import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
-// You need to change this path to the .env file you have locally (still trying to figure out an alternative, VSCode tries to look for .env in VSCODE/ directory, not project root)
-const envPath = path.join(__dirname, '../../', '.env'); // Adjust path based on where .env is located
+// Your .env should be in root directory
+const envPath = path.join(__dirname, '../../', '.env'); 
 dotenv.config({ path: envPath });
 
 import * as vscode from 'vscode';
@@ -18,6 +22,10 @@ const AWS_ACCESS_KEY = process.env.AWS_ACCESS_KEY!;
 const AWS_SECRET_KEY = process.env.AWS_SECRET_KEY!;
 const AWS_COGNITO_APP_CLIENT_ID = process.env.AWS_COGNITO_APP_CLIENT_ID!;
 
+const AWS_S3_DASHBOARD_URL = process.env.AWS_S3_DASHBOARD_URL!;
+const AWS_S3_BUCKET_NAME = process.env.AWS_S3_BUCKET_NAME!;
+const AWS_S3_OBJECT_KEY = process.env.AWS_S3_OBJECT_KEY!;
+
 const cognitoClient = new CognitoIdentityProviderClient({
 	'region': "us-east-2",
 	'credentials': {
@@ -25,6 +33,36 @@ const cognitoClient = new CognitoIdentityProviderClient({
 		secretAccessKey: AWS_SECRET_KEY
 	},
 });
+
+const s3Client = new S3Client({ 
+	'region': "us-east-2",
+	'credentials': {
+		accessKeyId: AWS_ACCESS_KEY,
+		secretAccessKey: AWS_SECRET_KEY
+	},
+});
+
+const generatePresignedUrl = async (
+    bucketName: string,
+    objectKey: string,
+    expiresIn: number = 300,
+    userId?: string
+): Promise<string> => {
+    try {
+        const command = new GetObjectCommand({
+            Bucket: bucketName,
+            Key: objectKey,
+        });
+
+        const url = await getSignedUrl(s3Client, command, { expiresIn });
+
+        console.log(`Generated pre-signed URL for ${userId || "unknown user"}: ${url}`);
+        return url;
+    } catch (error) {
+        console.error("Error generating pre-signed URL:", error);
+        throw error;
+    }
+}
 
 let timeout: NodeJS.Timeout | undefined = undefined;  // To keep track of the timeout
 
@@ -304,6 +342,18 @@ export function activate(context: vscode.ExtensionContext) {
 		}
 	});
 	context.subscriptions.push(disposableDocGen);
+
+	const disposableDashboard = vscode.commands.registerCommand("omnicode.viewDashboard", async () => {
+		const userId = getCognitoUserId(context);
+		if (userId === undefined) {
+			console.log("User is not logged in");
+			vscode.window.showErrorMessage("You must be logged in to view your dashboard");
+		} else {
+			const presignedUrl = await generatePresignedUrl(AWS_S3_BUCKET_NAME, AWS_S3_OBJECT_KEY, 300, userId);
+			vscode.env.openExternal(vscode.Uri.parse(presignedUrl));
+		}
+	});
+	context.subscriptions.push(disposableDashboard);
 }
 
 // This method is called when your extension is deactivated
