@@ -1,28 +1,20 @@
-// The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
+import * as vscode from 'vscode';
 import * as path from 'path';
 import * as dotenv from 'dotenv';
 
-
+import * as util from './util';
 import Requests from './api';
-import { getCognitoUserId } from './dashboard';
 
-import { DynamoDBClient, PutItemCommand } from "@aws-sdk/client-dynamodb";
-import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { CognitoIdentityProviderClient, ConfirmSignUpCommand, SignUpCommand, InitiateAuthCommand } from '@aws-sdk/client-cognito-identity-provider';
 
 // Your .env should be in root directory
 const envPath = path.join(__dirname, '../../', '.env'); 
 dotenv.config({ path: envPath });
 
-import * as vscode from 'vscode';
-import { CognitoIdentityProviderClient, ConfirmSignUpCommand, SignUpCommand, InitiateAuthCommand, GetUserCommand } from '@aws-sdk/client-cognito-identity-provider';
-
 const AWS_ACCESS_KEY = process.env.AWS_ACCESS_KEY!;
 const AWS_SECRET_KEY = process.env.AWS_SECRET_KEY!;
 const AWS_COGNITO_APP_CLIENT_ID = process.env.AWS_COGNITO_APP_CLIENT_ID!;
 
-const AWS_S3_DASHBOARD_URL = process.env.AWS_S3_DASHBOARD_URL!;
 const AWS_S3_BUCKET_NAME = process.env.AWS_S3_BUCKET_NAME!;
 const AWS_S3_OBJECT_KEY = process.env.AWS_S3_OBJECT_KEY!;
 
@@ -34,82 +26,8 @@ const cognitoClient = new CognitoIdentityProviderClient({
 	},
 });
 
-const s3Client = new S3Client({ 
-	'region': "us-east-2",
-	'credentials': {
-		accessKeyId: AWS_ACCESS_KEY,
-		secretAccessKey: AWS_SECRET_KEY
-	},
-});
 
-const generatePresignedUrl = async (
-    bucketName: string,
-    objectKey: string,
-    expiresIn: number = 300,
-    userId?: string
-): Promise<string> => {
-    try {
-        const command = new GetObjectCommand({
-            Bucket: bucketName,
-            Key: objectKey,
-        });
-
-        const url = await getSignedUrl(s3Client, command, { expiresIn });
-
-        console.log(`Generated pre-signed URL for ${userId || "unknown user"}: ${url}`);
-        return url;
-    } catch (error) {
-        console.error("Error generating pre-signed URL:", error);
-        throw error;
-    }
-}
-
-let timeout: NodeJS.Timeout | undefined = undefined;  // To keep track of the timeout
-
-async function insertUser(userSub: string) {
-	const dynamoDBClient = new DynamoDBClient({ 
-		'region': 'us-east-2',
-		'credentials': {
-			accessKeyId: AWS_ACCESS_KEY,
-			secretAccessKey: AWS_SECRET_KEY
-		},
-	});
-
-	const params = {
-		TableName: "UserMetadata",
-		Item: {
-			CognitoUserId: { S: userSub },
-		},
-	};
-
-	try {
-		await dynamoDBClient.send(new PutItemCommand(params));
-		console.log("User added to DynamoDB successfully");
-	} catch (error) {
-		console.error("Error adding user to DynamoDB");
-	}
-}
-
-function validatePassword(password: string): string | null {
-	// Password requirements adhere to Cognito's default password rules
-    if (password.length < 8) {
-        return "Password must be at least 8 characters long.";
-    }
-    if (!/[A-Z]/.test(password)) {
-        return "Password must contain at least one uppercase letter.";
-    }
-    if (!/[a-z]/.test(password)) {
-        return "Password must contain at least one lowercase letter.";
-    }
-    if (!/[0-9]/.test(password)) {
-        return "Password must contain at least one digit.";
-    }
-    if (!/[\W_]/.test(password)) {
-        return "Password must contain at least one special character (e.g., @, $, #, etc.).";
-    }
-    return null;
-}
-
+// Registers a new user under the given email and password. It makes a direct call to Cognito's API.
 async function registerUser(email: string, password: string) {
     const command = new SignUpCommand({
         ClientId: AWS_COGNITO_APP_CLIENT_ID,
@@ -121,8 +39,7 @@ async function registerUser(email: string, password: string) {
     });
 
     try {
-        const response = await cognitoClient.send(command);
-		await insertUser(response.UserSub!);
+        await cognitoClient.send(command);
         vscode.window.showInformationMessage("Signup successful!");
 		return true;
     } catch (error: any) {
@@ -133,6 +50,7 @@ async function registerUser(email: string, password: string) {
     }
 }
 
+// Logs in a user with the given email and password. It makes a direct call to Cognito's API.
 async function loginUser(email: string, password: string) {
 	const command = new InitiateAuthCommand({
 		AuthFlow: "USER_PASSWORD_AUTH",
@@ -147,10 +65,7 @@ async function loginUser(email: string, password: string) {
 		const response = await cognitoClient.send(command);
 		if (response.AuthenticationResult) {
 			const { IdToken, AccessToken, RefreshToken } = response.AuthenticationResult;
-			console.log(IdToken);
-
 			vscode.window.showInformationMessage("Login successful");
-			
 			return { IdToken, AccessToken, RefreshToken };
 		} else {
 			vscode.window.showErrorMessage("Login failed");
@@ -161,14 +76,18 @@ async function loginUser(email: string, password: string) {
 	return null;
 }
 
+// Used for code completion suggestion. User inactivity of 3 seconds will trigger API call for code completion suggestion.
+let timeout: NodeJS.Timeout | undefined = undefined;
+
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
-
 	// Use the console to output diagnostic information (console.log) and errors (console.error)
 	// This line of code will only be executed once when your extension is activated
 	console.log('Congratulations, your extension "omnicode" is now active!');
 
+	/* This is a disposable consisting of the Register functionality. It uses input boxes to fetch a users email and password. Both inputs are validated with regex.
+	It also handles verification of the registration by Cognito's default authentication methods. It sends a code to the email and waits to be confirmed with the code. */
 	const disposableRegister = vscode.commands.registerCommand('omnicode.registerUser', async () => {
 		const email = await vscode.window.showInputBox({
 			prompt: "Enter your email address",
@@ -188,7 +107,7 @@ export function activate(context: vscode.ExtensionContext) {
 			placeHolder: "Password",
 			password: true,
 			validateInput: (value: string) => {
-				const passwordValidation = validatePassword(value);
+				const passwordValidation = util.validatePassword(value);
 				if (passwordValidation) {
 					return passwordValidation;
 				}
@@ -222,6 +141,8 @@ export function activate(context: vscode.ExtensionContext) {
 	});
 	context.subscriptions.push(disposableRegister);
 
+	/* Handles the Login functionality. It works like the Registration functionality. Once the user logs in, their authentication tokens are stored
+	in VSCode's global state. The global stat is stored in a SQLite3 DB (provided by VSCode). */
 	const disposableLogin = vscode.commands.registerCommand("omnicode.loginUser", async () => {
 		const email = await vscode.window.showInputBox({
 			prompt: "Enter your email address",
@@ -241,7 +162,7 @@ export function activate(context: vscode.ExtensionContext) {
 			placeHolder: "Password",
 			password: true,
 			validateInput: (value: string) => {
-				const passwordValidation = validatePassword(value);
+				const passwordValidation = util.validatePassword(value);
 				if (passwordValidation) {
 					return passwordValidation;
 				}
@@ -258,57 +179,50 @@ export function activate(context: vscode.ExtensionContext) {
 	});
 	context.subscriptions.push(disposableLogin);
 
+	/* Handles Logout. Logging out means to delete the previously stored authentication tokens for a user. */
 	const disposableLogout = vscode.commands.registerCommand("omnicode.logoutUser", async () => {
 		context.globalState.update("authTokens", null);
 		vscode.window.showInformationMessage("You have been logged out");
 	});
 	context.subscriptions.push(disposableLogout);
 
+	/* This is where the code completion suggestion feature is implemented. The way it works is that it is triggered upon every 3 seconds of user inactivity.
+	Once triggered, it collects some context of the written code and makes an API call to collect the results of the LLM given the context. With the returned code suggestion,
+	the user is presented with the response as 'ghost text'. The user can choose to press TAB to accept the changes or ignore it by continuing to code. */
 	const provider = vscode.languages.registerInlineCompletionItemProvider(
         { scheme: 'file', language: '*' },
         {
             provideInlineCompletionItems(document: vscode.TextDocument, position: vscode.Position) {
-                console.log('Typing detected, starting completion process...');
-
                 return new Promise<vscode.InlineCompletionItem[] | undefined>((resolve) => {
                     if (timeout) {
-                        console.log('Clearing previous timeout...');
                         clearTimeout(timeout);
                     }
-
+					
+					// Default timeout is 3 seconds.
                     timeout = setTimeout(() => {
-                        console.log('Timer completed, providing suggestion...');
-
                         const line = document.lineAt(position);
-                        const words = line.text.split(/\s+/);
-
-						Requests.codeCompletionRequest(line.text);
-
-                        if (words.length < 2) {
-                            resolve(undefined);
-                            return;
-                        }
-
-                        const lastWord = words[words.length - 2];
-
-                        const completionItem = new vscode.InlineCompletionItem(lastWord, new vscode.Range(position, position));
-                        
-                        resolve([completionItem]);
+						Requests.codeCompletionRequest(line.text)
+							.then((data) => {
+								const completion_string: string = data;
+								console.log("Completion String:", completion_string);
+								const completionItem = new vscode.InlineCompletionItem(completion_string, new vscode.Range(position, position));
+								resolve([completionItem]);
+							})
+							.catch((error) => {
+								console.log(error)
+							});
                     }, 3000);
                 });
             }
         }
     );
-
     context.subscriptions.push(provider);
 	
 
-
-
-	// Refactor Code Command
+	/* This is where the refactor code feature is implemented. It makes an API call to retrieve results from the LLM. The user must select some code and then has the option to refactor it
+	(using right-click menu). The LLM will return the refactored code. The old code will be completely replaced with the new refactored code. */
 	const disposableRefactorCode = vscode.commands.registerCommand("omnicode.refactorCode", async () => {
 		const editor = vscode.window.activeTextEditor;
-
 		if (editor) {
 			const selectedText = editor.document.getText(editor.selection);
 
@@ -320,36 +234,63 @@ export function activate(context: vscode.ExtensionContext) {
 			});
 
 			Requests.refactorRequest(selectedText);
-
-			vscode.window.showInformationMessage(`Refactored to: ${refactoredText}`);
 		} else {
 			vscode.window.showErrorMessage("No active editor found.");
 		}
 	});
 	context.subscriptions.push(disposableRefactorCode);
 
-	// Generate Documentation Command
+	
+	/* This is where the documentation generate (docstring) feature is implemented. It makes an API call to retrieve docstring from the LLM. To generate a docstring, the user selects some code
+	to be documented (using right-click menu). The generated docstring will be inserted before the beginning of the selected code. */
 	const disposableDocGen = vscode.commands.registerCommand("omnicode.generateDocumentation", async () => {
 		const editor = vscode.window.activeTextEditor;
-
+	
 		if (editor) {
-			
-			
-			const selectedText = editor.document.getText(editor.selection);
-			console.log(`Selected texts for DocGen is ${selectedText}`);
-
-			Requests.generateDocstringRequest(selectedText);
+			const document = editor.document;
+			const selectedText = document.getText(editor.selection);
+			const languageId = document.languageId;
+	
+			Requests.generateDocstringRequest(context, selectedText)
+				.then((data) => {
+					console.log("Generated docstring:", data);
+	
+					if (data) {
+						// Docstring needs to be multi-line commented
+						const commentedData = util.wrapInComment(data, languageId);
+	
+						editor.edit((editBuilder) => {
+							// Insert the commented data before the selected text
+							editBuilder.insert(editor.selection.start, `${commentedData}\n`);
+						}).then((success) => {
+							if (success) {
+								console.log("Docstring inserted successfully.");
+							} else {
+								console.error("Failed to insert docstring.");
+							}
+						});
+					} else {
+						console.warn("No data received for docstring generation.");
+					}
+				})
+				.catch((error) => {
+					console.error("Error during docstring generation:", error);
+				});
+		} else {
+			vscode.window.showErrorMessage("No active editor found.");
 		}
 	});
 	context.subscriptions.push(disposableDocGen);
 
+	/* This disposable implements the dashboard functionality. The user MUST be logged in to access their dashboard. It finds their user ID from their authentication tokens and
+	generates a unique pre-signed URL that opens a link to their dashboard page. */
 	const disposableDashboard = vscode.commands.registerCommand("omnicode.viewDashboard", async () => {
-		const userId = getCognitoUserId(context);
+		const userId = util.getCognitoUserId(context);
 		if (userId === undefined) {
-			console.log("User is not logged in");
 			vscode.window.showErrorMessage("You must be logged in to view your dashboard");
 		} else {
-			const presignedUrl = await generatePresignedUrl(AWS_S3_BUCKET_NAME, AWS_S3_OBJECT_KEY, 300, userId);
+			// Generate unique pre-signed URL
+			const presignedUrl = await util.generatePresignedUrl(AWS_S3_BUCKET_NAME, AWS_S3_OBJECT_KEY, 300, userId);
 			vscode.env.openExternal(vscode.Uri.parse(presignedUrl));
 		}
 	});
