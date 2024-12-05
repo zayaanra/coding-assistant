@@ -1,7 +1,14 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // Call the functions to render the charts
-    pieChart();
-    barChart();
+    const userId = getUserId();
+    if (userId === null || userId === "") {
+        // TODO: Display error page
+    } else {
+        // Call the functions to render the charts
+        pieChart();
+        barChart();
+        const userElement = document.getElementById('userId');
+        userElement.textContent = getUserId();
+    }
 });
 
 function pieChart() {
@@ -83,4 +90,13 @@ function barChart() {
             }
         }
     });
+}
+
+function getUserId() {
+    // TODO: If user does not exist or user not allowed to access, show error document.
+
+    const params = new URLSearchParams(window.location.search);
+    const userId = params.get('id')
+
+    return params.get("id");
 }
