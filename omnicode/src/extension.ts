@@ -15,6 +15,7 @@ const AWS_ACCESS_KEY = process.env.AWS_ACCESS_KEY!;
 const AWS_SECRET_KEY = process.env.AWS_SECRET_KEY!;
 const AWS_COGNITO_APP_CLIENT_ID = process.env.AWS_COGNITO_APP_CLIENT_ID!;
 
+const AWS_S3_OBJECT_URL = process.env.AWS_S3_OBJECT_URL!;
 const AWS_S3_BUCKET_NAME = process.env.AWS_S3_BUCKET_NAME!;
 const AWS_S3_OBJECT_KEY = process.env.AWS_S3_OBJECT_KEY!;
 
@@ -289,9 +290,8 @@ export function activate(context: vscode.ExtensionContext) {
 		if (userId === undefined) {
 			vscode.window.showErrorMessage("You must be logged in to view your dashboard");
 		} else {
-			// Generate unique pre-signed URL
-			const presignedUrl = await util.generatePresignedUrl(AWS_S3_BUCKET_NAME, AWS_S3_OBJECT_KEY, 300, userId);
-			vscode.env.openExternal(vscode.Uri.parse(presignedUrl));
+			// TODO: Implement a way to pass in user ID to frontend
+			vscode.env.openExternal(vscode.Uri.parse(AWS_S3_OBJECT_URL));
 		}
 	});
 	context.subscriptions.push(disposableDashboard);

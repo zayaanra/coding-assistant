@@ -43,23 +43,6 @@ export const getCognitoUserId = (context: vscode.ExtensionContext) => {
     }
 };
 
-/* Generates a unique presigned URL to access the dashboard. By default, public access to the dashboard is disallowed. The pre-signed URL
-makes it so that only those with the presigned URL can see their dashboard. */
-export const generatePresignedUrl = async (bucketName: string, objectKey: string, expiresIn: number = 300, userId?: string): Promise<string> => {
-    try {
-        const command = new GetObjectCommand({
-            Bucket: bucketName,
-            Key: objectKey,
-        });
-        const url = await getSignedUrl(s3Client, command, { expiresIn });
-		// TODO: Need to figure out how to add user id on the URL
-        return url;
-    } catch (error) {
-        console.error("Error generating pre-signed URL:", error);
-        throw error;
-    }
-}
-
 // Takes in generated code from LLM and wraps each line of code in comments. Used for docstring feature.
 export const wrapInComment = (data: string, languageId: string): string  => {
     switch (languageId) {
