@@ -202,7 +202,7 @@ export function activate(context: vscode.ExtensionContext) {
 					// Default timeout is 3 seconds.
                     timeout = setTimeout(() => {
                         const line = document.lineAt(position);
-						Requests.codeCompletionRequest(line.text)
+						Requests.codeCompletionRequest(context, line.text)
 							.then((data) => {
 								const completion_string: string = data;
 								console.log("Completion String:", completion_string);
@@ -234,7 +234,7 @@ export function activate(context: vscode.ExtensionContext) {
 				editBuilder.replace(editor.selection, refactoredText);
 			});
 
-			Requests.refactorRequest(selectedText);
+			Requests.refactorRequest(context, selectedText);
 		} else {
 			vscode.window.showErrorMessage("No active editor found.");
 		}

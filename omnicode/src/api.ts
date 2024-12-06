@@ -14,9 +14,11 @@ const GENERATE_DOCSTRING_REQUEST_URL = process.env.GENERATE_DOCSTRING_REQUEST_UR
 const REFACTOR_REQUEST_URL = process.env.REFACTOR_REQUEST_URL!;
 
 // Fetches a code completion suggestion from the LLM with the given code snippet
-const codeCompletionRequest = async (code: string) => {
+const codeCompletionRequest = async (context: vscode.ExtensionContext, code: string) => {
     const data: object = {
-        code_snippet: code
+        userId: getCognitoUserId(context),
+        code_snippet: code,
+        code_language: vscode.window.activeTextEditor?.document.languageId,
     }
 
     try {
@@ -34,10 +36,9 @@ const codeCompletionRequest = async (code: string) => {
 // Fetches a generated docstring from the LLM with the given code snippet
 const generateDocstringRequest = async (context: vscode.ExtensionContext, code: string) => {
     const data: object = {
-        code_snippet: code,
         userId: getCognitoUserId(context),
+        code_snippet: code,
         code_language: vscode.window.activeTextEditor?.document.languageId,
-        timestamp: Date.now()
     }
 
     try {
@@ -53,9 +54,11 @@ const generateDocstringRequest = async (context: vscode.ExtensionContext, code: 
 }
 
 // Refactors the given code snippet into the new code provided by the LLM
-const refactorRequest = async (code: string) => {
+const refactorRequest = async (context: vscode.ExtensionContext, code: string) => {
     const data: object = {
-        code_snippet: code
+        userId: getCognitoUserId(context),
+        code_snippet: code,
+        code_language: vscode.window.activeTextEditor?.document.languageId,
     }
 
     try {
