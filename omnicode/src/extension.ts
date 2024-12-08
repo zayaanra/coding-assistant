@@ -78,7 +78,7 @@ async function loginUser(email: string, password: string) {
 // Used for code completion suggestion. User inactivity of 3 seconds will trigger API call for code completion suggestion.
 let timeout: NodeJS.Timeout | undefined = undefined;
 
-let isCompletionActive = false; // Flag to track when a completion request is active
+let accepted: boolean = false;
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -190,6 +190,11 @@ export function activate(context: vscode.ExtensionContext) {
 	/* This is where the code completion suggestion feature is implemented. The way it works is that it is triggered upon every 3 seconds of user inactivity.
 	Once triggered, it collects some context of the written code and makes an API call to collect the results of the LLM given the context. With the returned code suggestion,
 	the user is presented with the response as 'ghost text'. The user can choose to press TAB to accept the changes or ignore it by continuing to code. */
+	// const logCodeCompletionCmd = vscode.commands.registerCommand('omnicode.logCodeCompletion', (args) => {
+	// 	util.pushCodeCompletionMetrics(context, args.length);
+	// });
+	// context.subscriptions.push(logCodeCompletionCmd)
+
 	const provider = vscode.languages.registerInlineCompletionItemProvider(
         { scheme: 'file', language: '*' },
         {
@@ -198,8 +203,6 @@ export function activate(context: vscode.ExtensionContext) {
                     if (timeout) {
                         clearTimeout(timeout);
                     }
-
-					isCompletionActive = true;
 					
 					// Default timeout is 3 seconds.
                     timeout = setTimeout(() => {
@@ -207,13 +210,15 @@ export function activate(context: vscode.ExtensionContext) {
 						Requests.codeCompletionRequest(context, line.text)
 							.then((data) => {
 								const completionItem = new vscode.InlineCompletionItem(data, new vscode.Range(position, position));
+								// completionItem.command = {
+								// 	command: 'omnicode.logCodeCompletion',
+								// 	title: 'Log Code Completion',
+								// 	arguments: [data]
+								// };
 								resolve([completionItem]);
 							})
 							.catch((error) => {
 								console.log(error)
-							})
-							.finally(() => {
-								isCompletionActive = false;
 							});
                     }, 3000);
                 });

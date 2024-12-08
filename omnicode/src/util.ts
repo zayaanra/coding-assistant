@@ -2,10 +2,9 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as dotenv from 'dotenv';
 
-import { DynamoDBClient, QueryCommand, UpdateItemCommand, AttributeValue } from "@aws-sdk/client-dynamodb";
+// import { SQSSendMessageCommand, SQSClient } from '@aws-sdk/client-sqs';
 
 import { jwtDecode } from "jwt-decode";
-import { time } from 'console';
 
 // Your .env should be in root directory
 const envPath = path.join(__dirname, '../../', '.env'); 
@@ -13,17 +12,18 @@ dotenv.config({ path: envPath });
 
 const AWS_ACCESS_KEY = process.env.AWS_ACCESS_KEY!;
 const AWS_SECRET_KEY = process.env.AWS_SECRET_KEY!;
-const DYNAMODB_TABLE_NAME = process.env.DYNAMODB_TABLE_NAME!;
 
-const dynamodbClient = new DynamoDBClient(
-    { 
-        region: "us-east-1",
-        'credentials': {
-            accessKeyId: AWS_ACCESS_KEY,
-            secretAccessKey: AWS_SECRET_KEY
-        },
-    }
-);
+const SQS_QUEUE_URL = process.env.SQS_QUEUE_URL!;
+
+// const sqsClient = new SQSClient(
+//     { 
+//         region: "us-east-1",
+//         'credentials': {
+//             accessKeyId: AWS_ACCESS_KEY,
+//             secretAccessKey: AWS_SECRET_KEY
+//         },
+//     }
+// );
 
 export const getCognitoUserId = (context: vscode.ExtensionContext) => {
     const authTokens = context.globalState.get<{
@@ -86,54 +86,23 @@ export const validatePassword = (password: string): string | null =>  {
     return null;
 }
 
-export const updateCodeCompletionBytes = async (context: vscode.ExtensionContext, accepted: boolean, bytes: number) => {
-    const userId = getCognitoUserId(context)!;
-    
-    const queryParams = {
-        TableName: DYNAMODB_TABLE_NAME,
-        KeyConditionExpression: "UserId = :userId",
-        FilterExpression: "#feature = :codeCompletion",
-        ExpressionAttributeNames: {
-          "#feature": "feature",
-        },
-        ExpressionAttributeValues: {
-          ":userId": { S: userId },
-          ":codeCompletion": { S: "code_completion" },
-        } as Record<string, AttributeValue>,
-        ScanIndexForward: false,
-        Limit: 1,
-      };
+/* This function will push code completion metrics directly to SQS. In refactor and documentation requests, the metric push is done in a Lambda function.
+The reason why it is different here is because we need to keep track of whether the user accepts a code completion and this is only known until after the fact. 
+Therefore, it makes the most sense to do it direcly here. SQS is very efficient and can handle nearly unlimited number of TPS. */
+// export const pushCodeCompletionMetrics = async (context: vscode.ExtensionContext, bytes: number) => {
+//     const message_body = {
+//         "UserId": getCognitoUserId(context),
+//         "code_language": vscode.window.activeTextEditor?.document.languageId,
+//         "bytes": bytes,
+//         "timestamp": Date.now(),
+//         "feature": "code_completion"
+//     }
 
-      try {
-        const queryCommand = new QueryCommand(queryParams);
-        const queryResponse = await dynamodbClient.send(queryCommand);
-    
-        if (!queryResponse.Items || queryResponse.Items.length === 0) {
-          throw new Error("No code_completion items found for this user.");
-        }
-    
-        const mostRecentItem = queryResponse.Items[0];
-        const timestamp = mostRecentItem.timestamp.N!;
+//     const params = {
+//         QueueUrl: SQS_QUEUE_URL,
+//         MessageBody: JSON.stringify(message_body)
+//     }
 
-        const updateParams = {
-            TableName: DYNAMODB_TABLE_NAME,
-            Key: {
-                UserId: { S: userId },
-                timestamp: { N: timestamp },
-            },
-            UpdateExpression: "SET bytes = :b",
-            ExpressionAttributeValues: {
-                ":b": { N: bytes.toString() }
-            },
-        };
-    
-        const updateCommand = new UpdateItemCommand(updateParams);
-        const updateResponse = await dynamodbClient.send(updateCommand);
-    
-        console.log("Update successful:", updateResponse.Attributes);
-        return updateResponse.Attributes;
-      } catch (error) {
-        console.error("Error finding or updating item:", error);
-        throw error;
-      }
-}
+
+
+// }

@@ -96,8 +96,8 @@
   "dependencies": {
     "@aws-sdk/client-cognito-identity-provider": "^3.693.0",
     "@aws-sdk/client-dynamodb": "^3.705.0",
-    "@aws-sdk/client-s3": "^3.703.0",
     "@aws-sdk/s3-request-presigner": "^3.703.0",
+    "@aws-sdk/util-dynamodb": "^3.705.0",
     "axios": "^1.7.7",
     "axois": "^0.0.1-security",
     "dotenv": "^16.4.5",
