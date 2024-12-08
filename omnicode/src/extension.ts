@@ -16,8 +16,6 @@ const AWS_SECRET_KEY = process.env.AWS_SECRET_KEY!;
 const AWS_COGNITO_APP_CLIENT_ID = process.env.AWS_COGNITO_APP_CLIENT_ID!;
 
 const AWS_S3_OBJECT_URL = process.env.AWS_S3_OBJECT_URL!;
-const AWS_S3_BUCKET_NAME = process.env.AWS_S3_BUCKET_NAME!;
-const AWS_S3_OBJECT_KEY = process.env.AWS_S3_OBJECT_KEY!;
 
 const cognitoClient = new CognitoIdentityProviderClient({
 	'region': "us-east-2",
@@ -79,6 +77,8 @@ async function loginUser(email: string, password: string) {
 
 // Used for code completion suggestion. User inactivity of 3 seconds will trigger API call for code completion suggestion.
 let timeout: NodeJS.Timeout | undefined = undefined;
+
+let isCompletionActive = false; // Flag to track when a completion request is active
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -198,19 +198,22 @@ export function activate(context: vscode.ExtensionContext) {
                     if (timeout) {
                         clearTimeout(timeout);
                     }
+
+					isCompletionActive = true;
 					
 					// Default timeout is 3 seconds.
                     timeout = setTimeout(() => {
                         const line = document.lineAt(position);
 						Requests.codeCompletionRequest(context, line.text)
 							.then((data) => {
-								const completion_string: string = data;
-								console.log("Completion String:", completion_string);
-								const completionItem = new vscode.InlineCompletionItem(completion_string, new vscode.Range(position, position));
+								const completionItem = new vscode.InlineCompletionItem(data, new vscode.Range(position, position));
 								resolve([completionItem]);
 							})
 							.catch((error) => {
 								console.log(error)
+							})
+							.finally(() => {
+								isCompletionActive = false;
 							});
                     }, 3000);
                 });
@@ -218,7 +221,6 @@ export function activate(context: vscode.ExtensionContext) {
         }
     );
     context.subscriptions.push(provider);
-	
 
 	/* This is where the refactor code feature is implemented. It makes an API call to retrieve results from the LLM. The user must select some code and then has the option to refactor it
 	(using right-click menu). The LLM will return the refactored code. The old code will be completely replaced with the new refactored code. */
