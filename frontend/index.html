@@ -6,13 +6,39 @@
     <title>Omnicode Usage Dashboard</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="static/index.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+        
+    <!-- API Gateway generated SDK -->
+    <script type="text/javascript" src="assets/js/sdk/lib/axios/dist/axios.standalone.js"></script>
+    <script type="text/javascript" src="assets/js/sdk/lib/CryptoJS/rollups/hmac-sha256.js"></script>
+    <script type="text/javascript" src="assets/js/sdk/lib/CryptoJS/rollups/sha256.js"></script>
+    <script type="text/javascript" src="assets/js/sdk/lib/CryptoJS/components/hmac.js"></script>
+    <script type="text/javascript" src="assets/js/sdk/lib/CryptoJS/components/enc-base64.js"></script>
+    <script type="text/javascript" src="assets/js/sdk/lib/url-template/url-template.js"></script>
+    <script type="text/javascript" src="assets/js/sdk/lib/apiGatewayCore/sigV4Client.js"></script>
+    <script type="text/javascript" src="assets/js/sdk/lib/apiGatewayCore/apiGatewayClient.js"></script>
+    <script type="text/javascript" src="assets/js/sdk/lib/apiGatewayCore/simpleHttpClient.js"></script>
+    <script type="text/javascript" src="assets/js/sdk/lib/apiGatewayCore/utils.js"></script>
+
+    <script src="assets/js/sdk/apigClient.js"></script>
+    <script src="https://sdk.amazonaws.com/js/aws-sdk-2.879.0.min.js"></script>
 
     <script type="text/javascript">
-        const params = new URLSearchParams(window.location.search);
-        const id = params.get('id');
-        // TODO: If user id does not exist or isn't yours
+        const id = new URLSearchParams(window.location.search).get('id');
+    
         if (id === null || id === "") {
             window.location.href = "./error.html"
+        } else {
+            var sdk = apigClientFactory.newClient({});
+            var params = { id: id };
+            var additionalParams = {};
+            sdk.metricsGet(params, {}, additionalParams)
+                .then(function(response) {
+                    console.log('Response:', response);
+                })
+                .catch(function(error) {
+                    console.log(error);
+                });
         }
     </script>
 </head>

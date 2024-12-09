@@ -1,8 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     pieChart();
     barChart();
-    const userElement = document.getElementById('userId');
-    userElement.textContent = userId;
 });
 
 function pieChart() {
