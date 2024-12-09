@@ -297,8 +297,9 @@ export function activate(context: vscode.ExtensionContext) {
 		if (userId === undefined) {
 			vscode.window.showErrorMessage("You must be logged in to view your dashboard");
 		} else {
-			// TODO: Implement a way to pass in user ID to frontend
-			vscode.env.openExternal(vscode.Uri.parse(AWS_S3_OBJECT_URL));
+			const baseUrl = AWS_S3_OBJECT_URL;
+			const urlWithQuery = `${baseUrl}?id=${encodeURIComponent(userId)}`;
+			vscode.env.openExternal(vscode.Uri.parse(urlWithQuery));
 		}
 	});
 	context.subscriptions.push(disposableDashboard);
