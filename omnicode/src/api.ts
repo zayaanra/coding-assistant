@@ -64,7 +64,7 @@ const refactorRequest = async (context: vscode.ExtensionContext, code: string) =
 
     try {
         const response: AxiosResponse = await axios.post(REFACTOR_REQUEST_URL, data);
-        console.log(response);
+        return JSON.parse(response.data.body).refactored_code;
     } catch (error) {
         if (axios.isAxiosError(error)) {
             console.log(error.message);

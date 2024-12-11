@@ -234,14 +234,21 @@ export function activate(context: vscode.ExtensionContext) {
 		if (editor) {
 			const selectedText = editor.document.getText(editor.selection);
 
-			// For now, just changes text all uppercase to show that it works.
-			const refactoredText = selectedText.toUpperCase();
+			Requests.refactorRequest(context, selectedText)
+				.then((data) => {
+					if (data) {
+						editor.edit(editBuilder => {
+							editBuilder.replace(editor.selection, data);
+						});
+					}
+				})
+				.catch((error) => {
+					console.log("Error during code refactor:", error);
+				})
 
-			await editor.edit(editBuilder => {
-				editBuilder.replace(editor.selection, refactoredText);
-			});
 
-			Requests.refactorRequest(context, selectedText);
+
+			
 		} else {
 			vscode.window.showErrorMessage("No active editor found.");
 		}
