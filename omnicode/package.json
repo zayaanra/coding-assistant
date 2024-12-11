@@ -1,32 +1,106 @@
 {
   "name": "omnicode",
   "displayName": "Omnicode",
-  "description": "AI powered coding assistant",
+  "description": "",
   "version": "0.0.1",
   "engines": {
-    "vscode": "^1.94.0"
+    "vscode": "^1.95.0"
   },
   "categories": [
     "Other"
   ],
-  "activationEvents": [
-    "onLanguage:javascript"
-  ],
-  "main": "./extension.js",
+  "activationEvents": [],
+  "main": "./out/extension.js",
   "contributes": {
-    "commands": []
+    "commands": [
+      {
+        "command": "omnicode.refactorCode",
+        "title": "Omnicode - Refactor Code"
+      },
+      {
+        "command": "omnicode.generateDocumentation",
+        "title": "Omnicode - Generate Documentation"
+      },
+      {
+        "command": "omnicode.registerUser",
+        "title": "Omnicode - Register"
+      },
+      {
+        "command": "omnicode.loginUser",
+        "title": "Omnicode - Login"
+      },
+      {
+        "command": "omnicode.logoutUser",
+        "title": "Omnicode - Logout"
+      },
+      {
+        "command": "omnicode.viewDashboard",
+        "title": "Omnicode - View Your Dashboard"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "omnicode.refactorCode",
+          "group": "omnicode",
+          "when": "editorHasSelection"
+        },
+        {
+          "command": "omnicode.generateDocumentation",
+          "group": "omnicode@1",
+          "when": "editorHasSelection"
+        },
+        {
+          "command": "omnicode.registerUser",
+          "group": "omnicode@2",
+          "when": "true"
+        },
+        {
+          "command": "omnicode.loginUser",
+          "group": "omnicode@3",
+          "when": "true"
+        },
+        {
+          "command": "omnicode.logoutUser",
+          "group": "omnicode@4",
+          "when": "true"
+        },
+        {
+          "command": "omnicode.viewDashboard",
+          "group": "omnicode@5",
+          "when": "true"
+        }
+      ]
+    }
   },
   "scripts": {
-    "lint": "eslint .",
-    "pretest": "npm run lint",
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src",
     "test": "vscode-test"
   },
   "devDependencies": {
-    "@types/vscode": "^1.94.0",
+    "@types/axios": "^0.14.4",
     "@types/mocha": "^10.0.8",
     "@types/node": "20.x",
-    "eslint": "^9.11.1",
+    "@types/vscode": "^1.95.0",
+    "@typescript-eslint/eslint-plugin": "^8.7.0",
+    "@typescript-eslint/parser": "^8.7.0",
     "@vscode/test-cli": "^0.0.10",
-    "@vscode/test-electron": "^2.4.1"
+    "@vscode/test-electron": "^2.4.1",
+    "eslint": "^9.11.1",
+    "typescript": "^5.6.2"
+  },
+  "dependencies": {
+    "@aws-sdk/client-cognito-identity-provider": "^3.693.0",
+    "@aws-sdk/client-dynamodb": "^3.705.0",
+    "@aws-sdk/s3-request-presigner": "^3.703.0",
+    "@aws-sdk/util-dynamodb": "^3.705.0",
+    "axios": "^1.7.7",
+    "axois": "^0.0.1-security",
+    "dotenv": "^16.4.5",
+    "jwt-decode": "^4.0.0"
   }
 }
