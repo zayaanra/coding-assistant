@@ -35,6 +35,8 @@
             sdk.metricsGet(params, {}, additionalParams)
                 .then(function(response) {
                     console.log('Response:', response);
+                    const data = response.data;
+                    updateDashboard(data);
                 })
                 .catch(function(error) {
                     console.log(error);

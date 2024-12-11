@@ -1,18 +1,31 @@
-document.addEventListener('DOMContentLoaded', () => {
-    pieChart();
-    barChart();
-});
+function updateDashboard(data) {
+    // Update Data Written
+    const dataWrittenElement = document.querySelector('.card h2');
+    if (dataWrittenElement) {
+        dataWrittenElement.textContent = `${(data.data_written / 1024).toFixed(2)} KB`;
+    }
 
-function pieChart() {
+    // Update Languages Pie Chart
+    const languageLabels = Object.keys(data.code_languages);
+    const languageData = Object.values(data.code_languages);
+    createPieChart(languageLabels, languageData);
+
+    // Update Requests Bar Chart
+    const requestLabels = Object.keys(data.requests);
+    const requestData = Object.values(data.requests);
+    createBarChart(requestLabels, requestData);
+}
+
+function createPieChart(labels, data) {
     const languagesCtx = document.getElementById('languagesChart').getContext('2d');
-    return new Chart(languagesCtx, {
+    new Chart(languagesCtx, {
         type: 'pie',
         data: {
-            labels: ['Python', 'JavaScript', 'Go'],
+            labels: labels,
             datasets: [{
                 label: 'Languages Used',
-                data: [40, 35, 25],
-                backgroundColor: ['#ffdd59', '#575fcf', '#ff3f34'],
+                data: data,
+                backgroundColor: generateColors(labels.length),
             }]
         },
         options: {
@@ -30,29 +43,17 @@ function pieChart() {
     });
 }
 
-function barChart() {
+function createBarChart(labels, data) {
     const requestsCtx = document.getElementById('requestsChart').getContext('2d');
-    return new Chart(requestsCtx, {
+    new Chart(requestsCtx, {
         type: 'bar',
         data: {
-            labels: ['Mon', 'Tue', 'Wed'],
-            datasets: [
-                {
-                    label: 'Code Completion Request',
-                    data: [10, 30, 20],
-                    backgroundColor: '#ffdd59'
-                },
-                {
-                    label: 'Code Refactor Request',
-                    data: [5, 15, 25],
-                    backgroundColor: '#ff3f34'
-                },
-                {
-                    label: 'Documentation Generation Request',
-                    data: [8, 20, 18],
-                    backgroundColor: '#575fcf'
-                }
-            ]
+            labels: labels,
+            datasets: [{
+                label: 'Requests',
+                data: data,
+                backgroundColor: generateColors(labels.length),
+            }]
         },
         options: {
             responsive: true,
@@ -69,17 +70,22 @@ function barChart() {
                 x: {
                     title: {
                         display: true,
-                        text: 'Days'
+                        text: 'Request Types'
                     }
                 },
                 y: {
                     beginAtZero: true,
                     title: {
                         display: true,
-                        text: 'Requests'
+                        text: 'Count'
                     }
                 }
             }
         }
     });
+}
+
+function generateColors(count) {
+    const colors = ['#ffdd59', '#575fcf', '#ff3f34', '#0be881', '#00d8d6'];
+    return Array.from({ length: count }, (_, i) => colors[i % colors.length]);
 }
