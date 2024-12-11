@@ -2,28 +2,11 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as dotenv from 'dotenv';
 
-// import { SQSSendMessageCommand, SQSClient } from '@aws-sdk/client-sqs';
-
 import { jwtDecode } from "jwt-decode";
 
 // Your .env should be in root directory
 const envPath = path.join(__dirname, '../../', '.env'); 
 dotenv.config({ path: envPath });
-
-const AWS_ACCESS_KEY = process.env.AWS_ACCESS_KEY!;
-const AWS_SECRET_KEY = process.env.AWS_SECRET_KEY!;
-
-const SQS_QUEUE_URL = process.env.SQS_QUEUE_URL!;
-
-// const sqsClient = new SQSClient(
-//     { 
-//         region: "us-east-1",
-//         'credentials': {
-//             accessKeyId: AWS_ACCESS_KEY,
-//             secretAccessKey: AWS_SECRET_KEY
-//         },
-//     }
-// );
 
 export const getCognitoUserId = (context: vscode.ExtensionContext) => {
     const authTokens = context.globalState.get<{
@@ -85,24 +68,3 @@ export const validatePassword = (password: string): string | null =>  {
     }
     return null;
 }
-
-/* This function will push code completion metrics directly to SQS. In refactor and documentation requests, the metric push is done in a Lambda function.
-The reason why it is different here is because we need to keep track of whether the user accepts a code completion and this is only known until after the fact. 
-Therefore, it makes the most sense to do it direcly here. SQS is very efficient and can handle nearly unlimited number of TPS. */
-// export const pushCodeCompletionMetrics = async (context: vscode.ExtensionContext, bytes: number) => {
-//     const message_body = {
-//         "UserId": getCognitoUserId(context),
-//         "code_language": vscode.window.activeTextEditor?.document.languageId,
-//         "bytes": bytes,
-//         "timestamp": Date.now(),
-//         "feature": "code_completion"
-//     }
-
-//     const params = {
-//         QueueUrl: SQS_QUEUE_URL,
-//         MessageBody: JSON.stringify(message_body)
-//     }
-
-
-
-// }

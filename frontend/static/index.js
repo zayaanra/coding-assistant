@@ -10,10 +10,15 @@ function updateDashboard(data) {
     const languageData = Object.values(data.code_languages);
     createPieChart(languageLabels, languageData);
 
+    // Process Requests Data for Weekdays
+    const requestLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const requestTypes = ['refactor_code', 'code_completion', 'doc_string'];
+    const requestData = requestTypes.map(type =>
+        requestLabels.map(day => (data.requests[day]?.[type] || 0))
+    );
+
     // Update Requests Bar Chart
-    const requestLabels = Object.keys(data.requests);
-    const requestData = Object.values(data.requests);
-    createBarChart(requestLabels, requestData);
+    createBarChart(requestLabels, requestData, requestTypes);
 }
 
 function createPieChart(labels, data) {
@@ -43,17 +48,19 @@ function createPieChart(labels, data) {
     });
 }
 
-function createBarChart(labels, data) {
+function createBarChart(labels, data, requestTypes) {
     const requestsCtx = document.getElementById('requestsChart').getContext('2d');
+    const datasets = requestTypes.map((type, index) => ({
+        label: type.replace('_', ' ').toUpperCase(),
+        data: data[index],
+        backgroundColor: generateColors(requestTypes.length)[index]
+    }));
+
     new Chart(requestsCtx, {
         type: 'bar',
         data: {
             labels: labels,
-            datasets: [{
-                label: 'Requests',
-                data: data,
-                backgroundColor: generateColors(labels.length),
-            }]
+            datasets: datasets
         },
         options: {
             responsive: true,
@@ -70,15 +77,17 @@ function createBarChart(labels, data) {
                 x: {
                     title: {
                         display: true,
-                        text: 'Request Types'
-                    }
+                        text: 'Weekdays'
+                    },
+                    stacked: false // Ensure bars are grouped, not stacked
                 },
                 y: {
                     beginAtZero: true,
                     title: {
                         display: true,
                         text: 'Count'
-                    }
+                    },
+                    stacked: false // Ensure bars are grouped, not stacked
                 }
             }
         }

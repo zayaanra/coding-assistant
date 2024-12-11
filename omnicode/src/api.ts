@@ -20,6 +20,7 @@ const codeCompletionRequest = async (context: vscode.ExtensionContext, code: str
         code_snippet: code,
         code_language: vscode.window.activeTextEditor?.document.languageId,
     }
+    console.log("language:", vscode.window.activeTextEditor?.document.languageId);
 
     try {
         const response: AxiosResponse = await axios.post(CODE_COMPLETION_REQUEST_URL, data);
