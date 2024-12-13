@@ -272,11 +272,11 @@ export function activate(context: vscode.ExtensionContext) {
 	
 					if (data) {
 						// Docstring needs to be multi-line commented
-						const commentedData = util.wrapInComment(data, languageId);
+						// const commentedData = util.wrapInComment(data, languageId);
 	
 						editor.edit((editBuilder) => {
 							// Insert the commented data before the selected text
-							editBuilder.insert(editor.selection.start, `${commentedData}\n`);
+							editBuilder.insert(editor.selection.start, `${data}\n`);
 						}).then((success) => {
 							if (success) {
 								console.log("Docstring inserted successfully.");
